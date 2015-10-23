@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
+import javax.net.ssl.SSLSocket;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -12,7 +14,7 @@ import org.json.simple.parser.ParseException;
 
 public class MessageReceiveThread implements Runnable {
 
-	private Socket socket;
+	private SSLSocket socket;
 	private String identity = "";
 	private String room_id = "";
 
@@ -25,7 +27,7 @@ public class MessageReceiveThread implements Runnable {
 
 	private boolean run = true;
 
-	public MessageReceiveThread(Socket socket) throws IOException {
+	public MessageReceiveThread(SSLSocket socket) throws IOException {
 		this.socket = socket;
 	}
 

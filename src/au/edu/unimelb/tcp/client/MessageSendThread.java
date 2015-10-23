@@ -3,16 +3,19 @@ package au.edu.unimelb.tcp.client;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
+
+import javax.net.ssl.SSLSocket;
 
 import org.json.simple.JSONObject;
 
 public class MessageSendThread implements Runnable {
 
-	private Socket socket;
+	private SSLSocket socket;
 
 	private DataOutputStream out;
-	
+
 	private static boolean run = true;
 
 	public static boolean isRun() {
@@ -26,7 +29,7 @@ public class MessageSendThread implements Runnable {
 	// Reading from console
 	private Scanner cmdin = new Scanner(System.in);
 
-	public MessageSendThread(Socket socket) throws IOException {
+	public MessageSendThread(SSLSocket socket) throws IOException {
 		this.socket = socket;
 		out = new DataOutputStream(socket.getOutputStream());
 	}
@@ -41,6 +44,9 @@ public class MessageSendThread implements Runnable {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		try {
@@ -52,61 +58,68 @@ public class MessageSendThread implements Runnable {
 		}
 	}
 
-	public void MessageSend(Socket socket, String msg) throws IOException {
+	public void MessageSend(Socket socket, String msg) throws IOException,
+			NoSuchAlgorithmException {
 		JSONObject sendToServer = new JSONObject();
-		String []array = msg.split(" ");
-		if(!array[0].startsWith("#")) {
+		String[] array = msg.split(" ");
+		if (!array[0].startsWith("#")) {
 			sendToServer = ClientMessages.Message("message", msg);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
-		}
-		else if(array.length < 2 || array.length > 2) {
-			if(array.length == 4 && array[0].startsWith("#kick")) {
-				sendToServer = ClientMessages.Kick("kick", array[1], Integer.parseInt(array[2]), array[3]);
-				out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
+		} else if (array.length < 2 || array.length > 2) {
+			if (array.length == 4 && array[0].startsWith("#kick")) {
+				sendToServer = ClientMessages.Kick("kick", array[1],
+						Integer.parseInt(array[2]), array[3]);
+				out.write((sendToServer.toJSONString() + "\n")
+						.getBytes("UTF-8"));
 				out.flush();
-			}
-			else if(array[0].startsWith("#list")) {
+			} else if (array[0].startsWith("#list")) {
 				sendToServer = ClientMessages.List("list");
-				out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
+				out.write((sendToServer.toJSONString() + "\n")
+						.getBytes("UTF-8"));
 				out.flush();
-			}
-			else if(array[0].startsWith("#quit")) {
+			} else if (array[0].startsWith("#quit")) {
 				sendToServer = ClientMessages.Quit("quit");
-				out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
+				out.write((sendToServer.toJSONString() + "\n")
+						.getBytes("UTF-8"));
 				out.flush();
 			}
-			else System.out.println("Invalid command!");
-		}
-		else if(array[0].startsWith("#identitychange")) {
-			sendToServer = ClientMessages.IdentityChange("identitychange", array[1]);
+			// Authenticate
+			else if (array[0].startsWith("#authenticate")) {
+				sendToServer = ClientMessages.Authenticate("authenticate",
+						array[1], array[2]);
+				out.write((sendToServer.toJSONString() + "\n")
+						.getBytes("UTF-8"));
+				out.flush();
+			} else
+				System.out.println("Invalid command!");
+		} else if (array[0].startsWith("#identitychange")) {
+			sendToServer = ClientMessages.IdentityChange("identitychange",
+					array[1]);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
-		}
-		else if(array[0].startsWith("#join")) {
+		} else if (array[0].startsWith("#join")) {
 			sendToServer = ClientMessages.Join("join", array[1]);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
 		}
-		
-		else if(array[0].startsWith("#who")) {
+
+		else if (array[0].startsWith("#who")) {
 			sendToServer = ClientMessages.Who("who", array[1]);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
-		}
-		else if(array[0].startsWith("#createroom")) {
+		} else if (array[0].startsWith("#createroom")) {
 			sendToServer = ClientMessages.CreateRoom("createroom", array[1]);
 			MessageReceiveThread.setNew_room(array[1]);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
-		}
-		else if(array[0].startsWith("#delete")) {
+		} else if (array[0].startsWith("#delete")) {
 			sendToServer = ClientMessages.Delete("delete", array[1]);
 			MessageReceiveThread.setDelete_room(array[1]);
 			out.write((sendToServer.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
-		}		
-				
+		}
+
 		// forcing TCP to send data immediately
 	}
 }

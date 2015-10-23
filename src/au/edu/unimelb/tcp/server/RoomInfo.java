@@ -2,9 +2,11 @@ package au.edu.unimelb.tcp.server;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.SSLSocket;
 
 import org.json.simple.JSONObject;
 
@@ -36,7 +38,6 @@ public class RoomInfo {
 
 	public static void setGuest(int room_no, int guest_no, String guest_id) {
 		rooms.get(room_no).getGuests().get(guest_no).setGuest_id(guest_id);
-		;
 	}
 
 	/**
@@ -47,8 +48,8 @@ public class RoomInfo {
 	 * @return boolean
 	 * @throws IOException
 	 */
-	public static synchronized boolean changeIdentity(JSONObject message, String former_id,
-			String guest_id) throws IOException {
+	public static synchronized boolean changeIdentity(JSONObject message,
+			String former_id, String guest_id) throws IOException {
 		boolean duplicated = false;
 		String newIdentity = (String) message.get("identity");
 		// check the identity format
@@ -84,11 +85,14 @@ public class RoomInfo {
 							RoomInfo.getRooms().get(i).setOwner(guest_id);
 					}
 					// send the message to all the guests
-					DataOutputStream output = new DataOutputStream(RoomInfo
-							.getGuest(i, j).getSocket().getOutputStream());
-					output.write((ServerMessages.NewIdentity(guest_id,
-							former_id).toJSONString() + "\n").getBytes("UTF-8"));
-					output.flush();
+					if (RoomInfo.getGuest(i, j).getSocket() != null) {
+						DataOutputStream output = new DataOutputStream(RoomInfo
+								.getGuest(i, j).getSocket().getOutputStream());
+						output.write((ServerMessages.NewIdentity(guest_id,
+								former_id).toJSONString() + "\n")
+								.getBytes("UTF-8"));
+						output.flush();
+					}
 				}
 			}
 			return true;
@@ -102,8 +106,8 @@ public class RoomInfo {
 	 * @param out
 	 * @throws IOException
 	 */
-	public static synchronized void join(String newRoom, String guest_id, DataOutputStream out)
-			throws IOException {
+	public static synchronized void join(String newRoom, String guest_id,
+			DataOutputStream out) throws IOException {
 		String room = "";
 		String former_room = "";
 		boolean isExisted = false;
@@ -121,7 +125,8 @@ public class RoomInfo {
 					if (!isExisted) {
 						former_room = room;
 						out.write((ServerMessages.RoomChange(guest_id,
-								former_room, room).toJSONString() + "\n").getBytes("UTF-8"));
+								former_room, room).toJSONString() + "\n")
+								.getBytes("UTF-8"));
 						out.flush();
 						return;
 					} else {
@@ -131,8 +136,9 @@ public class RoomInfo {
 							move(guest_id, former_room, room);
 							return;
 						} else {
-							out.write((ServerMessages.Message(guest_id,
-									"System: You cannot join this room currently!")
+							out.write((ServerMessages
+									.Message(guest_id,
+											"System: You cannot join this room currently!")
 									.toJSONString() + "\n").getBytes("UTF-8"));
 							out.flush();
 						}
@@ -143,7 +149,7 @@ public class RoomInfo {
 		}
 
 	}
-	
+
 	/**
 	 * 
 	 * @param identity
@@ -152,23 +158,26 @@ public class RoomInfo {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public static synchronized void firstMove(String identity, String newRoom, DataOutputStream out, Socket socket) throws IOException {
-		RoomInfo.getRooms().get(0).getGuests().add(new SingleGuest(socket, identity));
-		for (int j = 0; j < RoomInfo.getRooms().get(0).getGuests()
-				.size(); j++) {
-			DataOutputStream output = new DataOutputStream(RoomInfo
-					.getGuest(0, j).getSocket().getOutputStream());
-			output.write((ServerMessages.RoomChange(identity,
-					"", newRoom).toJSONString() + "\n").getBytes("UTF-8"));
-			output.flush();
-			if (RoomInfo.getGuest(0, j).getGuest_id().equals(identity)) {
-				output.write((ServerMessages.RoomContents(newRoom)
+	public static synchronized void firstMove(String identity, String newRoom,
+			DataOutputStream out, SSLSocket socket) throws IOException {
+		RoomInfo.getRooms().get(0).getGuests()
+				.add(new SingleGuest(socket, identity));
+		for (int j = 0; j < RoomInfo.getRooms().get(0).getGuests().size(); j++) {
+			if (RoomInfo.getGuest(0, j).getSocket() != null) {
+				DataOutputStream output = new DataOutputStream(RoomInfo
+						.getGuest(0, j).getSocket().getOutputStream());
+				output.write((ServerMessages.RoomChange(identity, "", newRoom)
 						.toJSONString() + "\n").getBytes("UTF-8"));
 				output.flush();
+				if (RoomInfo.getGuest(0, j).getGuest_id().equals(identity)) {
+					output.write((ServerMessages.RoomContents(newRoom)
+							.toJSONString() + "\n").getBytes("UTF-8"));
+					output.flush();
+				}
 			}
 		}
 	}
-	
+
 	/**
 	 * 
 	 * @param identity
@@ -176,8 +185,8 @@ public class RoomInfo {
 	 * @param newRoom
 	 * @throws IOException
 	 */
-	public static synchronized void move(String identity, String roomid, String newRoom)
-			throws IOException {
+	public static synchronized void move(String identity, String roomid,
+			String newRoom) throws IOException {
 		SingleGuest self = null;
 		// move this guest to the new one
 		String former_room = roomid;
@@ -203,11 +212,15 @@ public class RoomInfo {
 					// room
 					for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests()
 							.size(); j++) {
-						DataOutputStream output = new DataOutputStream(RoomInfo
-								.getGuest(i, j).getSocket().getOutputStream());
-						output.write((ServerMessages.RoomChange(identity,
-								former_room, newRoom).toJSONString() + "\n").getBytes("UTF-8"));
-						output.flush();
+						if (RoomInfo.getGuest(i, j).getSocket() != null) {
+							DataOutputStream output = new DataOutputStream(
+									RoomInfo.getGuest(i, j).getSocket()
+											.getOutputStream());
+							output.write((ServerMessages.RoomChange(identity,
+									former_room, newRoom).toJSONString() + "\n")
+									.getBytes("UTF-8"));
+							output.flush();
+						}
 					}
 				}
 				break;
@@ -216,20 +229,26 @@ public class RoomInfo {
 		// send move information to all the guests from the new room
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			if (newRoom.equals(RoomInfo.getRooms().get(i).getRoomid())) {
-				RoomInfo.getRooms().get(i).getGuests().add(self); 
+				RoomInfo.getRooms().get(i).getGuests().add(self);
 				for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests()
 						.size(); j++) {
-					DataOutputStream output = new DataOutputStream(RoomInfo
-							.getGuest(i, j).getSocket().getOutputStream());
-					output.write((ServerMessages.RoomChange(identity,
-							former_room, newRoom).toJSONString() + "\n").getBytes("UTF-8"));
-					output.flush();
-					if (RoomInfo.getGuest(i, j).getGuest_id().equals(identity) && newRoom.equals("MainHall")) {
-						output.write((ServerMessages.RoomContents(newRoom)
-								.toJSONString() + "\n").getBytes("UTF-8"));
-						output.write((ServerMessages.RoomList()
-								.toJSONString() + "\n").getBytes("UTF-8"));
+					if (RoomInfo.getGuest(i, j).getSocket() != null) {
+						DataOutputStream output = new DataOutputStream(RoomInfo
+								.getGuest(i, j).getSocket().getOutputStream());
+						output.write((ServerMessages.RoomChange(identity,
+								former_room, newRoom).toJSONString() + "\n")
+								.getBytes("UTF-8"));
 						output.flush();
+
+						if (RoomInfo.getGuest(i, j).getGuest_id()
+								.equals(identity)
+								&& newRoom.equals("MainHall")) {
+							output.write((ServerMessages.RoomContents(newRoom)
+									.toJSONString() + "\n").getBytes("UTF-8"));
+							output.write((ServerMessages.RoomList()
+									.toJSONString() + "\n").getBytes("UTF-8"));
+							output.flush();
+						}
 					}
 				}
 				break;
@@ -244,8 +263,8 @@ public class RoomInfo {
 	 * @param guest_id
 	 * @throws IOException
 	 */
-	public static synchronized void createRoom(JSONObject message, String guest_id)
-			throws IOException {
+	public static synchronized void createRoom(JSONObject message,
+			String guest_id) throws IOException {
 		String newRoom = (String) message.get("roomid");
 		boolean isExisted = false;
 		boolean isMatched = false;
@@ -273,8 +292,8 @@ public class RoomInfo {
 	 * @param out
 	 * @throws IOException
 	 */
-	public static synchronized boolean roomContents(JSONObject message, DataOutputStream out)
-			throws IOException {
+	public static synchronized boolean roomContents(JSONObject message,
+			DataOutputStream out) throws IOException {
 		boolean isExisted = false;
 		// check if the room exists
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
@@ -286,7 +305,8 @@ public class RoomInfo {
 		}
 		String room_no = (String) message.get("roomid");
 		if (isExisted) {
-			out.write((ServerMessages.RoomContents(room_no).toJSONString() + "\n").getBytes("UTF-8"));
+			out.write((ServerMessages.RoomContents(room_no).toJSONString() + "\n")
+					.getBytes("UTF-8"));
 			out.flush();
 			return true;
 		} else {
@@ -301,8 +321,8 @@ public class RoomInfo {
 	 * @param out
 	 * @throws IOException
 	 */
-	public static synchronized void kick(JSONObject message, String guest_id, DataOutputStream out)
-			throws IOException {
+	public static synchronized void kick(JSONObject message, String guest_id,
+			DataOutputStream out) throws IOException {
 		boolean isValid = false;
 		boolean isIn = false;
 		boolean timeValid = false;
@@ -336,15 +356,19 @@ public class RoomInfo {
 		}
 		if (!isValid) {
 			out.write((ServerMessages
-					.Message(guest_id, "System: You are not the owner of this room or roomid is in valid!")
+					.Message(guest_id,
+							"System: You are not the owner of this room or roomid is in valid!")
 					.toJSONString() + "\n").getBytes("UTF-8"));
 			out.flush();
 		} else if (!isIn) {
-			out.write((ServerMessages.Message(guest_id, "System: This guest is not in the room!")
-					.toJSONString() + "\n").getBytes("UTF-8"));
+			out.write((ServerMessages.Message(guest_id,
+					"System: This guest is not in the room!").toJSONString() + "\n")
+					.getBytes("UTF-8"));
 			out.flush();
 		} else if (!timeValid) {
-			out.write((ServerMessages.Message(guest_id, "System: Invalid time!").toJSONString() + "\n").getBytes("UTF-8"));
+			out.write((ServerMessages
+					.Message(guest_id, "System: Invalid time!").toJSONString() + "\n")
+					.getBytes("UTF-8"));
 			out.flush();
 		}
 	}
@@ -355,7 +379,8 @@ public class RoomInfo {
 	 * @param guest_id
 	 * @throws IOException
 	 */
-	public static synchronized void delete(JSONObject message, String guest_id) throws IOException {
+	public static synchronized void delete(JSONObject message, String guest_id)
+			throws IOException {
 		String roomid = (String) message.get("roomid");
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			// if room is valid
@@ -370,7 +395,7 @@ public class RoomInfo {
 					}
 					RoomInfo.getRooms().remove(i);
 					return;
-				}			
+				}
 			}
 		}
 	}
@@ -381,7 +406,8 @@ public class RoomInfo {
 	 * @param guest_id
 	 * @throws IOException
 	 */
-	public static void message(JSONObject message, String guest_id) throws IOException {
+	public static void message(JSONObject message, String guest_id)
+			throws IOException {
 		String content = (String) message.get("content");
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
@@ -390,11 +416,15 @@ public class RoomInfo {
 					// send the message to the guest who in the same room
 					for (int x = 0; x < RoomInfo.getRooms().get(i).getGuests()
 							.size(); x++) {
-						DataOutputStream output = new DataOutputStream(RoomInfo
-								.getGuest(i, x).getSocket().getOutputStream());
-						output.write((ServerMessages.Message(guest_id,
-								content).toJSONString() + "\n").getBytes("UTF-8"));
-						output.flush();
+						if (RoomInfo.getGuest(i, x).getSocket() != null) {
+							DataOutputStream output = new DataOutputStream(
+									RoomInfo.getGuest(i, x).getSocket()
+											.getOutputStream());
+							output.write((ServerMessages.Message(guest_id,
+									content).toJSONString() + "\n")
+									.getBytes("UTF-8"));
+							output.flush();
+						}
 					}
 				}
 			}
@@ -408,24 +438,33 @@ public class RoomInfo {
 	 * @param out
 	 * @throws IOException
 	 */
-	public static synchronized void quit(String guest_id, Socket socket, DataOutputStream out) throws IOException {
+	public static synchronized void quit(String guest_id, SSLSocket socket,
+			DataOutputStream out) throws IOException {
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
 				// find the room where guest is in
 				if (guest_id.equals(RoomInfo.getGuest(i, j).getGuest_id())) {
-					RoomInfo.getRooms().get(i).getGuests().remove(j);
+					if (RoomInfo.getGuest(i, j).getPassword().equals("")) {
+						RoomInfo.getRooms().get(i).getGuests().remove(j);
+					} else {
+						RoomInfo.getGuest(i, j).setSocket(null);
+					}
 					if (RoomInfo.getRooms().get(i).getGuests().size() > 0) {
 						for (int x = 0; x < RoomInfo.getRooms().get(i)
 								.getGuests().size(); x++) {
 							// send the message to the guest who in the same
 							// room
-							DataOutputStream output = new DataOutputStream(
-									RoomInfo.getGuest(i, x).getSocket()
-											.getOutputStream());
-							output.write((ServerMessages.RoomChange(guest_id,
-									RoomInfo.getRooms().get(i).getRoomid(), "")
-									.toJSONString() + "\n").getBytes("UTF-8"));
-							output.flush();
+							if (RoomInfo.getGuest(i, x).getSocket() != null) {
+								DataOutputStream output = new DataOutputStream(
+										RoomInfo.getGuest(i, x).getSocket()
+												.getOutputStream());
+								output.write((ServerMessages.RoomChange(
+										guest_id,
+										RoomInfo.getRooms().get(i).getRoomid(),
+										"").toJSONString() + "\n")
+										.getBytes("UTF-8"));
+								output.flush();
+							}
 						}
 					}
 					if (socket != null) {
@@ -436,20 +475,81 @@ public class RoomInfo {
 					}
 				}
 			}
-			if (guest_id.equals(RoomInfo.getRooms().get(i).getOwner())) {
-				RoomInfo.getRooms().get(i).setOwner("");
-			}
+			// if (guest_id.equals(RoomInfo.getRooms().get(i).getOwner()) && ) {
+			// RoomInfo.getRooms().get(i).setOwner("");
+			// }
 			// if no one is in the room and the owner has quit, close
 			// this room
-			if (RoomInfo.getRooms().get(i).getGuests().size() == 0
-					&& RoomInfo.getRooms().get(i).getOwner().equals("")
-					&& !RoomInfo.getRooms().get(i).getRoomid()
-							.equals("MainHall")) {
-				RoomInfo.getRooms().remove(i);
-				i--;
-			}
+			// if (RoomInfo.getRooms().get(i).getGuests().size() == 0
+			// && RoomInfo.getRooms().get(i).getOwner().equals("")
+			// && !RoomInfo.getRooms().get(i).getRoomid()
+			// .equals("MainHall")) {
+			// RoomInfo.getRooms().remove(i);
+			// i--;
+			// }
 		}
 		return;
+	}
+
+	/**
+	 * authenticate a guest, if the user exists and no one is using it and
+	 * password is correct, then remove the previous one and change the current
+	 * one. if not exists, add a new one.
+	 * 
+	 * @param former_id
+	 * @param identity
+	 * @param password
+	 * @return success or fail
+	 * @throws UnsupportedEncodingException
+	 * @throws IOException
+	 */
+	public static synchronized boolean authenticate(String former_id,
+			String identity, String password)
+			throws UnsupportedEncodingException, IOException {
+		boolean existed = false;
+		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
+			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
+				// if the identity exists
+				if (RoomInfo.getGuest(i, j).getGuest_id().equals(identity)) {
+					existed = true;
+					// if no one login as this identity && this identity has
+					// password
+					if (RoomInfo.getGuest(i, j).getSocket() == null
+							&& !RoomInfo.getGuest(i, j).getPassword()
+									.equals("")
+							&& RoomInfo.getGuest(i, j).getPassword()
+									.equals(password)) {
+						existed = true;
+						RoomInfo.getRooms().get(i).getGuests().remove(j);
+						break;
+					} else {
+						return false;
+					}
+				}
+			}
+			if (existed) {
+				break;
+			}
+		}
+		// change the identity and password for the guest
+		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
+			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
+				if (RoomInfo.getGuest(i, j).getGuest_id().equals(former_id)) {
+					RoomInfo.getGuest(i, j).setGuest_id(identity);
+					RoomInfo.getGuest(i, j).setPassword(password);
+				}
+				// send the message to all the guests
+				if (RoomInfo.getGuest(i, j).getSocket() != null) {
+					DataOutputStream output = new DataOutputStream(RoomInfo
+							.getGuest(i, j).getSocket().getOutputStream());
+					output.write((ServerMessages.NewIdentity(identity,
+							former_id).toJSONString() + "\n").getBytes("UTF-8"));
+					output.flush();
+				}
+			}
+		}
+		return true;
+
 	}
 
 }
@@ -492,19 +592,20 @@ class Room {
 
 class SingleGuest {
 
-	Socket socket;
+	SSLSocket socket;
 	String guest_id;
+	String password = "";
 
-	public SingleGuest(Socket socket, String guest_id) {
+	public SingleGuest(SSLSocket socket, String guest_id) {
 		this.socket = socket;
 		this.guest_id = guest_id;
 	}
 
-	public Socket getSocket() {
+	public SSLSocket getSocket() {
 		return socket;
 	}
 
-	public void setSocket(Socket socket) {
+	public void setSocket(SSLSocket socket) {
 		this.socket = socket;
 	}
 
@@ -514,6 +615,14 @@ class SingleGuest {
 
 	public void setGuest_id(String guest_id) {
 		this.guest_id = guest_id;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
 	}
 
 }

@@ -5,17 +5,22 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.net.SocketException;
+
+import javax.net.ssl.SSLSocket;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 public class ClientThread implements Runnable {
-	private Socket socket;
+	private SSLSocket socket;
 	private String guest_id;
 	private String former_id = "";
 	private int count;
+	private boolean is_authenticated = false;
 
 	private BufferedReader in;
 	private DataOutputStream out;
@@ -23,7 +28,7 @@ public class ClientThread implements Runnable {
 
 	private boolean run = true;
 
-	public ClientThread(Socket socket, int client_id) throws IOException {
+	public ClientThread(SSLSocket socket, int client_id) throws IOException {
 		this.socket = socket;
 		this.count = client_id;
 		this.guest_id = "guest" + client_id;
@@ -46,11 +51,11 @@ public class ClientThread implements Runnable {
 				while (run) {
 					JSONObject message = new JSONObject();
 					String msg = in.readLine();
-					if(msg != null) {
-					message = (JSONObject) parser.parse(msg);
-					MessageManage(message);
-					}
-					 else quit();
+					if (msg != null) {
+						message = (JSONObject) parser.parse(msg);
+						MessageManage(message);
+					} else
+						quit();
 					if (message == null)
 						run = false;
 				}
@@ -65,6 +70,12 @@ public class ClientThread implements Runnable {
 			} catch (ParseException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (SocketException e) {
+				if (socket != null) {
+					socket.close();
+					socket = null;
+				}
+				quit();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -85,7 +96,14 @@ public class ClientThread implements Runnable {
 			return;
 		}
 		if (type.equals("createroom")) {
-			createRoom(message);
+			if (is_authenticated) {
+				createRoom(message);
+			} else {
+				out.write((ServerMessages.Message("System",
+						"You are not authenticated!").toJSONString() + "\n")
+						.getBytes("UTF-8"));
+				out.flush();
+			}
 			return;
 		}
 		if (type.equals("list")) {
@@ -99,11 +117,25 @@ public class ClientThread implements Runnable {
 			return;
 		}
 		if (type.equals("kick")) {
-			kick(message);
+			if (is_authenticated) {
+				kick(message);
+			} else {
+				out.write((ServerMessages.Message("System",
+						"You are not authenticated!").toJSONString() + "\n")
+						.getBytes("UTF-8"));
+				out.flush();
+			}
 			return;
 		}
 		if (type.equals("delete")) {
-			delete(message);
+			if (is_authenticated) {
+				delete(message);
+			} else {
+				out.write((ServerMessages.Message("System",
+						"You are not authenticated!").toJSONString() + "\n")
+						.getBytes("UTF-8"));
+				out.flush();
+			}
 			return;
 		}
 		if (type.equals("message")) {
@@ -112,6 +144,10 @@ public class ClientThread implements Runnable {
 		}
 		if (type.equals("quit")) {
 			quit();
+			return;
+		}
+		if (type.equals("authenticate")) {
+			authenticate(message);
 			return;
 		}
 	}
@@ -173,8 +209,9 @@ public class ClientThread implements Runnable {
 	 * @throws IOException
 	 */
 	public void roomContents(JSONObject message) throws IOException {
-		if(!RoomInfo.roomContents(message, out)) {
-			out.write((ServerMessages.Message(guest_id, "System: Roomid is invalid!") + "\n").getBytes("UTF-8"));
+		if (!RoomInfo.roomContents(message, out)) {
+			out.write((ServerMessages.Message(guest_id,
+					"System: Roomid is invalid!") + "\n").getBytes("UTF-8"));
 			out.flush();
 		}
 	}
@@ -224,6 +261,33 @@ public class ClientThread implements Runnable {
 		}
 		RoomInfo.quit(guest_id, socket, out);
 		run = false;
+	}
+
+	/**
+	 * match authenticate message
+	 * 
+	 * @param message
+	 * @throws UnsupportedEncodingException
+	 * @throws IOException
+	 */
+	public void authenticate(JSONObject message)
+			throws UnsupportedEncodingException, IOException {
+		String new_identity = (String) message.get("identity");
+		String password = (String) message.get("password");
+		if (RoomInfo.authenticate(guest_id, new_identity, password)) {
+			if (count != 0) {
+				UnusedNames.push(count);
+				count = 0;
+			}
+			is_authenticated = true;
+			former_id = guest_id;
+			guest_id = new_identity;
+		} else {
+			out.write((ServerMessages.Message("System",
+					"The identity been used or password is incorrect!")
+					.toJSONString() + "\n").getBytes("UTF-8"));
+			out.flush();
+		}
 	}
 
 }
