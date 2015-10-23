@@ -57,11 +57,18 @@ public class RoomInfo {
 			return false;
 		}
 		// check if the identity has been used
+		for (int i = 0; i < OfflineUsers.getGuests().size(); i++) {
+			if (OfflineUsers.getGuests().get(i).getGuest_id()
+					.equals(newIdentity)) {
+				duplicated = true;
+				return false;
+			}
+		}
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
 				if (RoomInfo.getGuest(i, j).getGuest_id().equals(newIdentity)) {
 					duplicated = true;
-					break;
+					return false;
 				}
 			}
 		}
@@ -85,14 +92,12 @@ public class RoomInfo {
 							RoomInfo.getRooms().get(i).setOwner(guest_id);
 					}
 					// send the message to all the guests
-					if (RoomInfo.getGuest(i, j).getSocket() != null) {
-						DataOutputStream output = new DataOutputStream(RoomInfo
-								.getGuest(i, j).getSocket().getOutputStream());
-						output.write((ServerMessages.NewIdentity(guest_id,
-								former_id).toJSONString() + "\n")
-								.getBytes("UTF-8"));
-						output.flush();
-					}
+					DataOutputStream output = new DataOutputStream(RoomInfo
+							.getGuest(i, j).getSocket().getOutputStream());
+					output.write((ServerMessages.NewIdentity(guest_id,
+							former_id).toJSONString() + "\n").getBytes("UTF-8"));
+					output.flush();
+
 				}
 			}
 			return true;
@@ -163,18 +168,18 @@ public class RoomInfo {
 		RoomInfo.getRooms().get(0).getGuests()
 				.add(new SingleGuest(socket, identity));
 		for (int j = 0; j < RoomInfo.getRooms().get(0).getGuests().size(); j++) {
-			if (RoomInfo.getGuest(0, j).getSocket() != null) {
-				DataOutputStream output = new DataOutputStream(RoomInfo
-						.getGuest(0, j).getSocket().getOutputStream());
-				output.write((ServerMessages.RoomChange(identity, "", newRoom)
+
+			DataOutputStream output = new DataOutputStream(RoomInfo
+					.getGuest(0, j).getSocket().getOutputStream());
+			output.write((ServerMessages.RoomChange(identity, "", newRoom)
+					.toJSONString() + "\n").getBytes("UTF-8"));
+			output.flush();
+			if (RoomInfo.getGuest(0, j).getGuest_id().equals(identity)) {
+				output.write((ServerMessages.RoomContents(newRoom)
 						.toJSONString() + "\n").getBytes("UTF-8"));
 				output.flush();
-				if (RoomInfo.getGuest(0, j).getGuest_id().equals(identity)) {
-					output.write((ServerMessages.RoomContents(newRoom)
-							.toJSONString() + "\n").getBytes("UTF-8"));
-					output.flush();
-				}
 			}
+
 		}
 	}
 
@@ -212,15 +217,14 @@ public class RoomInfo {
 					// room
 					for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests()
 							.size(); j++) {
-						if (RoomInfo.getGuest(i, j).getSocket() != null) {
-							DataOutputStream output = new DataOutputStream(
-									RoomInfo.getGuest(i, j).getSocket()
-											.getOutputStream());
-							output.write((ServerMessages.RoomChange(identity,
-									former_room, newRoom).toJSONString() + "\n")
-									.getBytes("UTF-8"));
-							output.flush();
-						}
+
+						DataOutputStream output = new DataOutputStream(RoomInfo
+								.getGuest(i, j).getSocket().getOutputStream());
+						output.write((ServerMessages.RoomChange(identity,
+								former_room, newRoom).toJSONString() + "\n")
+								.getBytes("UTF-8"));
+						output.flush();
+
 					}
 				}
 				break;
@@ -232,24 +236,23 @@ public class RoomInfo {
 				RoomInfo.getRooms().get(i).getGuests().add(self);
 				for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests()
 						.size(); j++) {
-					if (RoomInfo.getGuest(i, j).getSocket() != null) {
-						DataOutputStream output = new DataOutputStream(RoomInfo
-								.getGuest(i, j).getSocket().getOutputStream());
-						output.write((ServerMessages.RoomChange(identity,
-								former_room, newRoom).toJSONString() + "\n")
+
+					DataOutputStream output = new DataOutputStream(RoomInfo
+							.getGuest(i, j).getSocket().getOutputStream());
+					output.write((ServerMessages.RoomChange(identity,
+							former_room, newRoom).toJSONString() + "\n")
+							.getBytes("UTF-8"));
+					output.flush();
+
+					if (RoomInfo.getGuest(i, j).getGuest_id().equals(identity)
+							&& newRoom.equals("MainHall")) {
+						output.write((ServerMessages.RoomContents(newRoom)
+								.toJSONString() + "\n").getBytes("UTF-8"));
+						output.write((ServerMessages.RoomList().toJSONString() + "\n")
 								.getBytes("UTF-8"));
 						output.flush();
-
-						if (RoomInfo.getGuest(i, j).getGuest_id()
-								.equals(identity)
-								&& newRoom.equals("MainHall")) {
-							output.write((ServerMessages.RoomContents(newRoom)
-									.toJSONString() + "\n").getBytes("UTF-8"));
-							output.write((ServerMessages.RoomList()
-									.toJSONString() + "\n").getBytes("UTF-8"));
-							output.flush();
-						}
 					}
+
 				}
 				break;
 			}
@@ -416,15 +419,13 @@ public class RoomInfo {
 					// send the message to the guest who in the same room
 					for (int x = 0; x < RoomInfo.getRooms().get(i).getGuests()
 							.size(); x++) {
-						if (RoomInfo.getGuest(i, x).getSocket() != null) {
-							DataOutputStream output = new DataOutputStream(
-									RoomInfo.getGuest(i, x).getSocket()
-											.getOutputStream());
-							output.write((ServerMessages.Message(guest_id,
-									content).toJSONString() + "\n")
-									.getBytes("UTF-8"));
-							output.flush();
-						}
+
+						DataOutputStream output = new DataOutputStream(RoomInfo
+								.getGuest(i, x).getSocket().getOutputStream());
+						output.write((ServerMessages.Message(guest_id, content)
+								.toJSONString() + "\n").getBytes("UTF-8"));
+						output.flush();
+
 					}
 				}
 			}
@@ -440,15 +441,17 @@ public class RoomInfo {
 	 */
 	public static synchronized void quit(String guest_id, SSLSocket socket,
 			DataOutputStream out) throws IOException {
+		boolean authenticated = false;
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
 				// find the room where guest is in
 				if (guest_id.equals(RoomInfo.getGuest(i, j).getGuest_id())) {
-					if (RoomInfo.getGuest(i, j).getPassword().equals("")) {
-						RoomInfo.getRooms().get(i).getGuests().remove(j);
-					} else {
-						RoomInfo.getGuest(i, j).setSocket(null);
+					// if the user is authenticated
+					if (!RoomInfo.getGuest(i, j).getPassword().equals("")) {
+						OfflineUsers.getGuests().add(RoomInfo.getGuest(i, j));
+						authenticated = true;
 					}
+					RoomInfo.getRooms().get(i).getGuests().remove(j);
 					if (RoomInfo.getRooms().get(i).getGuests().size() > 0) {
 						for (int x = 0; x < RoomInfo.getRooms().get(i)
 								.getGuests().size(); x++) {
@@ -475,18 +478,20 @@ public class RoomInfo {
 					}
 				}
 			}
-			// if (guest_id.equals(RoomInfo.getRooms().get(i).getOwner()) && ) {
-			// RoomInfo.getRooms().get(i).setOwner("");
-			// }
-			// if no one is in the room and the owner has quit, close
-			// this room
-			// if (RoomInfo.getRooms().get(i).getGuests().size() == 0
-			// && RoomInfo.getRooms().get(i).getOwner().equals("")
-			// && !RoomInfo.getRooms().get(i).getRoomid()
-			// .equals("MainHall")) {
-			// RoomInfo.getRooms().remove(i);
-			// i--;
-			// }
+			if (!authenticated) {
+				if (guest_id.equals(RoomInfo.getRooms().get(i).getOwner())) {
+					RoomInfo.getRooms().get(i).setOwner("");
+				}
+				// if no one is in the room and the owner has quit, close
+				// this room
+				if (RoomInfo.getRooms().get(i).getGuests().size() == 0
+						&& RoomInfo.getRooms().get(i).getOwner().equals("")
+						&& !RoomInfo.getRooms().get(i).getRoomid()
+								.equals("MainHall")) {
+					RoomInfo.getRooms().remove(i);
+					i--;
+				}
+			}
 		}
 		return;
 	}
@@ -506,31 +511,28 @@ public class RoomInfo {
 	public static synchronized boolean authenticate(String former_id,
 			String identity, String password)
 			throws UnsupportedEncodingException, IOException {
-		boolean existed = false;
+		// check if the identity has been used
+		for (int i = 0; i < OfflineUsers.getGuests().size(); i++) {
+			if (OfflineUsers.getGuests().get(i).getGuest_id().equals(identity)
+					&& OfflineUsers.getGuests().get(i).getPassword()
+							.equals(password)) {
+				OfflineUsers.getGuests().remove(i);
+				break;
+			} else if (OfflineUsers.getGuests().get(i).getGuest_id()
+					.equals(identity)) {
+				return false;
+			}
+		}
+
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
 				// if the identity exists
 				if (RoomInfo.getGuest(i, j).getGuest_id().equals(identity)) {
-					existed = true;
-					// if no one login as this identity && this identity has
-					// password
-					if (RoomInfo.getGuest(i, j).getSocket() == null
-							&& !RoomInfo.getGuest(i, j).getPassword()
-									.equals("")
-							&& RoomInfo.getGuest(i, j).getPassword()
-									.equals(password)) {
-						existed = true;
-						RoomInfo.getRooms().get(i).getGuests().remove(j);
-						break;
-					} else {
-						return false;
-					}
+					return false;
 				}
 			}
-			if (existed) {
-				break;
-			}
 		}
+
 		// change the identity and password for the guest
 		for (int i = 0; i < RoomInfo.getRooms().size(); i++) {
 			for (int j = 0; j < RoomInfo.getRooms().get(i).getGuests().size(); j++) {
@@ -539,13 +541,11 @@ public class RoomInfo {
 					RoomInfo.getGuest(i, j).setPassword(password);
 				}
 				// send the message to all the guests
-				if (RoomInfo.getGuest(i, j).getSocket() != null) {
-					DataOutputStream output = new DataOutputStream(RoomInfo
-							.getGuest(i, j).getSocket().getOutputStream());
-					output.write((ServerMessages.NewIdentity(identity,
-							former_id).toJSONString() + "\n").getBytes("UTF-8"));
-					output.flush();
-				}
+				DataOutputStream output = new DataOutputStream(RoomInfo
+						.getGuest(i, j).getSocket().getOutputStream());
+				output.write((ServerMessages.NewIdentity(identity, former_id)
+						.toJSONString() + "\n").getBytes("UTF-8"));
+				output.flush();
 			}
 		}
 		return true;
@@ -588,41 +588,4 @@ class Room {
 	public void setOwner(String owner) {
 		this.owner = owner;
 	}
-}
-
-class SingleGuest {
-
-	SSLSocket socket;
-	String guest_id;
-	String password = "";
-
-	public SingleGuest(SSLSocket socket, String guest_id) {
-		this.socket = socket;
-		this.guest_id = guest_id;
-	}
-
-	public SSLSocket getSocket() {
-		return socket;
-	}
-
-	public void setSocket(SSLSocket socket) {
-		this.socket = socket;
-	}
-
-	public String getGuest_id() {
-		return guest_id;
-	}
-
-	public void setGuest_id(String guest_id) {
-		this.guest_id = guest_id;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
 }

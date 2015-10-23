@@ -20,7 +20,6 @@ public class ClientThread implements Runnable {
 	private String guest_id;
 	private String former_id = "";
 	private int count;
-	private boolean is_authenticated = false;
 
 	private BufferedReader in;
 	private DataOutputStream out;
@@ -96,14 +95,7 @@ public class ClientThread implements Runnable {
 			return;
 		}
 		if (type.equals("createroom")) {
-			if (is_authenticated) {
-				createRoom(message);
-			} else {
-				out.write((ServerMessages.Message("System",
-						"You are not authenticated!").toJSONString() + "\n")
-						.getBytes("UTF-8"));
-				out.flush();
-			}
+			createRoom(message);
 			return;
 		}
 		if (type.equals("list")) {
@@ -117,25 +109,11 @@ public class ClientThread implements Runnable {
 			return;
 		}
 		if (type.equals("kick")) {
-			if (is_authenticated) {
-				kick(message);
-			} else {
-				out.write((ServerMessages.Message("System",
-						"You are not authenticated!").toJSONString() + "\n")
-						.getBytes("UTF-8"));
-				out.flush();
-			}
+			kick(message);
 			return;
 		}
 		if (type.equals("delete")) {
-			if (is_authenticated) {
-				delete(message);
-			} else {
-				out.write((ServerMessages.Message("System",
-						"You are not authenticated!").toJSONString() + "\n")
-						.getBytes("UTF-8"));
-				out.flush();
-			}
+			delete(message);
 			return;
 		}
 		if (type.equals("message")) {
@@ -279,7 +257,6 @@ public class ClientThread implements Runnable {
 				UnusedNames.push(count);
 				count = 0;
 			}
-			is_authenticated = true;
 			former_id = guest_id;
 			guest_id = new_identity;
 		} else {

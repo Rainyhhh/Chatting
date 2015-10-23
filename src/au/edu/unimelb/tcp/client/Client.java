@@ -2,6 +2,7 @@ package au.edu.unimelb.tcp.client;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -19,35 +20,17 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
 public class Client {
-	
-	private static final String CLIENT_KEY_STORE_PASSWORD = "11111111";  
-    private static final String CLIENT_TRUST_KEY_STORE_PASSWORD = "11111111"; 
     
     private static SSLSocket sslSocket; 
-	
-	public static void init(String hostname, int port) {  
-        try {  
-            SSLContext ctx = SSLContext.getInstance("SSL");  
-  
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");  
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");  
-  
-            KeyStore ks = KeyStore.getInstance("JKS");  
-            KeyStore tks = KeyStore.getInstance("JKS");  
-  
-            ks.load(new FileInputStream("kclient.keystore"), CLIENT_KEY_STORE_PASSWORD.toCharArray());  
-            tks.load(new FileInputStream("tclient.keystore"), CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
-  
-            kmf.init(ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
-            tmf.init(tks);  
-  
-            ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);  
-  
-            sslSocket = (SSLSocket) ctx.getSocketFactory().createSocket(hostname, port);  
-        } catch (Exception e) {  
-            System.out.println(e);  
-        }  
-    }  
+		
+
+	public static SSLSocket getSslSocket() {
+		return sslSocket;
+	}
+
+	public static void setSslSocket(SSLSocket sslSocket) {
+		Client.sslSocket = sslSocket;
+	}
 
 	public static void main(String[] args) throws IOException, ParseException {
 		
@@ -63,7 +46,8 @@ public class Client {
 				parser.parseArgument(args);
 				String hostname = values.getHost();
 				
-				init(hostname, port);
+				ClientSSL clientSSL = new ClientSSL();
+				clientSSL.init(hostname, port);
 				//socket = factory.createSocket(hostname, port);
 				//socket = new Socket(hostname, port);
 			} catch (CmdLineException e) {
@@ -88,4 +72,42 @@ public class Client {
 			e.printStackTrace();
 		}
 	}
+}
+
+class ClientSSL {
+	
+	private static final String CLIENT_KEY_STORE_PASSWORD = "11111111";  
+    private static final String CLIENT_TRUST_KEY_STORE_PASSWORD = "11111111"; 	
+	
+	public void init(String hostname, int port) {  
+        try {  
+            SSLContext ctx = SSLContext.getInstance("SSL");  
+  
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");  
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");  
+  
+            KeyStore ks = KeyStore.getInstance("JKS");  
+            KeyStore tks = KeyStore.getInstance("JKS"); 
+            
+//            InputStream in_ks = getClass().getResourceAsStream(
+//					"kclient.keystore");
+//			InputStream in_tks = getClass().getResourceAsStream(
+//					"tclient.keystore");
+//  
+//            ks.load(in_ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
+//            tks.load(in_tks, CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
+//            
+            ks.load(new FileInputStream("kclient.keystore"), CLIENT_KEY_STORE_PASSWORD.toCharArray());  
+            tks.load(new FileInputStream("tclient.keystore"), CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
+  
+            kmf.init(ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
+            tmf.init(tks);  
+  
+            ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);  
+  
+            Client.setSslSocket((SSLSocket) ctx.getSocketFactory().createSocket(hostname, port));  
+        } catch (Exception e) {  
+            System.out.println(e);  
+        }  
+    }  
 }
