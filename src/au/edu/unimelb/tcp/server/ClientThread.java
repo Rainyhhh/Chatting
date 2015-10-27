@@ -74,7 +74,7 @@ public class ClientThread implements Runnable {
 					socket.close();
 					socket = null;
 				}
-				quit();
+				//quit();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

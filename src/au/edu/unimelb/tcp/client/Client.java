@@ -1,18 +1,13 @@
 package au.edu.unimelb.tcp.client;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.KeyStore;
 
-import javax.net.SocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.json.simple.parser.ParseException;
@@ -89,16 +84,16 @@ class ClientSSL {
             KeyStore ks = KeyStore.getInstance("JKS");  
             KeyStore tks = KeyStore.getInstance("JKS"); 
             
-//            InputStream in_ks = getClass().getResourceAsStream(
-//					"kclient.keystore");
-//			InputStream in_tks = getClass().getResourceAsStream(
-//					"tclient.keystore");
-//  
-//            ks.load(in_ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
-//            tks.load(in_tks, CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
+            InputStream in_ks = getClass().getResourceAsStream(
+					"/kclient.keystore");
+			InputStream in_tks = getClass().getResourceAsStream(
+					"/tclient.keystore");
+  
+            ks.load(in_ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
+            tks.load(in_tks, CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
 //            
-            ks.load(new FileInputStream("kclient.keystore"), CLIENT_KEY_STORE_PASSWORD.toCharArray());  
-            tks.load(new FileInputStream("tclient.keystore"), CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
+//            ks.load(new FileInputStream("kclient.keystore"), CLIENT_KEY_STORE_PASSWORD.toCharArray());  
+//            tks.load(new FileInputStream("tclient.keystore"), CLIENT_TRUST_KEY_STORE_PASSWORD.toCharArray());  
   
             kmf.init(ks, CLIENT_KEY_STORE_PASSWORD.toCharArray());  
             tmf.init(tks);  
